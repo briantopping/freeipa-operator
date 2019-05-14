@@ -1,0 +1,3 @@
+version: "1"
+domain: coglative.com
+repo: github.com/briantopping/freeipa-operator

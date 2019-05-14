@@ -1,0 +1,9 @@
+apiVersion: freeipa.coglative.com/v1alpha1
+kind: IpaCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ipacluster-sample
+spec:
+  # Add fields here
+  foo: bar

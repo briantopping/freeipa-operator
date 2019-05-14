@@ -1,0 +1,7 @@
+
+filegroup(
+    name = "config",
+    srcs = glob(["**/*.yaml"]),
+    visibility = ["//visibility:public"],
+)
+
