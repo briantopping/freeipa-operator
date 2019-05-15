@@ -14,6 +14,12 @@ of spending weeks getting it settled and reliable in a continerized environment.
 
 The operator is based on Kubebuilder and Bazel. The container itself comes from the FreeIPA Container project. 
 
+## Contributing
+
+Please feel free to engage with issues and PRs. It's imagined this project will reach basic maturity pretty quickly, but there's
+a lot of benefits that the operator pattern could bring to FreeIPA, such as managing backups, upgrades and monitoring with 
+Prometheus.   
+
 ## Status
 
 This project is in development phase. We'll keep this page updated as we get usable features.
