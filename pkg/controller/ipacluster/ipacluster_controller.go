@@ -36,12 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller")
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
+var log = logf.Log.WithName("ipacluster.controller")
 
 // Add creates a new IpaCluster Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -68,9 +63,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by IpaCluster - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+	// Uncomment watch a StatefulSet created by IpaCluster - change this for objects you create
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &freeipav1alpha1.IpaCluster{},
 	})
@@ -91,15 +85,14 @@ type ReconcileIpaCluster struct {
 
 // Reconcile reads that state of the cluster for a IpaCluster object and makes changes based on the state read
 // and what is in the IpaCluster.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
+// Automatically generate RBAC rules to allow the Controller to read and write StatefulSets
+// +kubebuilder:rbac:groups=apps,resources=statefulset,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=statefulset/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=freeipa.coglative.com,resources=ipaclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=freeipa.coglative.com,resources=ipaclusters/status,verbs=get;update;patch
 func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the IpaCluster instance
+	log.Info("Starting reconcile", "Name", request.Name, "Namespace", request.Namespace, "Kind", "ipaclusters.freeipa.coglative.com")
 	instance := &freeipav1alpha1.IpaCluster{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
@@ -112,19 +105,18 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
+	// Define the desired StatefulSets object
+	ss := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
+			Name:      instance.Name + "-statefulset",
 			Namespace: instance.Namespace,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
+				MatchLabels: map[string]string{"statefulset": instance.Name + "-statefulset"},
 			},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"statefulset": instance.Name + "-statefulset"}},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
@@ -136,27 +128,25 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, ss, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
+	// Check if the StatefulSet already exists
+	found := &appsv1.StatefulSet{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
-		err = r.Create(context.TODO(), deploy)
+		log.Info("Creating StatefulSet", "namespace", ss.Namespace, "name", ss.Name)
+		err = r.Create(context.TODO(), ss)
 		return reconcile.Result{}, err
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Info("Updating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
+	if !reflect.DeepEqual(ss.Spec, found.Spec) {
+		found.Spec = ss.Spec
+		log.Info("Updating StatefulSet", "namespace", ss.Namespace, "name", ss.Name)
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err

@@ -5,5 +5,5 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: ipacluster-sample
 spec:
-  # Add fields here
-  foo: bar
+  realmName: EXAMPLE.COM
+  domainName: example.com

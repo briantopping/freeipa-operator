@@ -27,8 +27,85 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            dnsForwarders:
+              description: A string list of DNS forwarders for name resolution, defaults
+                to no forwarders
+              items:
+                type: string
+              type: array
+            domainName:
+              description: The directory service root name as in "example.com", required
+              type: string
+            master:
+              description: The instantiation parameters for the master node
+              properties:
+                caEnable:
+                  description: Whether to create a CA server / replica on this node,
+                    defaults to `false`
+                  type: boolean
+                dnsEnable:
+                  description: Whether to create a DNS server / replica on this node,
+                    defaults to `false`
+                  type: boolean
+                ntpEnable:
+                  description: Whether to create a NTP server / replica on this node,
+                    defaults to `false`
+                  type: boolean
+                secretName:
+                  description: The name of the secret for a node type, defaults to
+                    "ipa-server-secrets"
+                  type: string
+              type: object
+            realmName:
+              description: The Kerberos realm name as in "EXAMPLE.COM", required
+              type: string
+            replica:
+              description: The instantiation parameters for replica nodes
+              properties:
+                caEnable:
+                  description: Whether to create a CA server / replica on this node,
+                    defaults to `false`
+                  type: boolean
+                dnsEnable:
+                  description: Whether to create a DNS server / replica on this node,
+                    defaults to `false`
+                  type: boolean
+                ntpEnable:
+                  description: Whether to create a NTP server / replica on this node,
+                    defaults to `false`
+                  type: boolean
+                secretName:
+                  description: The name of the secret for a node type, defaults to
+                    "ipa-server-secrets"
+                  type: string
+              type: object
+            replicaCount:
+              description: The number of // Whether to create a DNS server on this
+                node, defaults to `false`replicas that are desired, defaults to 1
+              format: int64
+              type: integer
+            uidStart:
+              description: An integer for the start of the UID numbering range, immutable
+                after cluster instantiation, default is defined by FreeIPA
+              format: int64
+              type: integer
+          required:
+          - realmName
+          - domainName
           type: object
         status:
+          properties:
+            pvQuantity:
+              description: Quantity of persistent volumes that are currently generated
+              format: int64
+              type: integer
+            status:
+              description: Human-readable status of the controller
+              type: string
+          required:
+          - status
+          - pvQuantity
           type: object
   version: v1alpha1
 status:

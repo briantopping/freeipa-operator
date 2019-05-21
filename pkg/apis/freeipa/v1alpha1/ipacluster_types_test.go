@@ -33,6 +33,10 @@ func TestStorageIpaCluster(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
+		},
+		Spec: IpaClusterSpec{
+			RealmName:  "EXAMPLE.COM",
+			DomainName: "example.com",
 		}}
 	g := gomega.NewGomegaWithT(t)
 

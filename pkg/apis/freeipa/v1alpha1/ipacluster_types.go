@@ -24,14 +24,44 @@ import (
 
 // IpaClusterSpec defines the desired state of IpaCluster
 type IpaClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// The Kerberos realm name as in "EXAMPLE.COM", required
+	RealmName string `json:"realmName"`
+	// The directory service root name as in "example.com", required
+	DomainName string `json:"domainName"`
+	// A string list of DNS forwarders for name resolution, defaults to no forwarders
+	// +optional
+	DNSForwarders []string `json:"dnsForwarders,omitempty"`
+	// An integer for the start of the UID numbering range, immutable after cluster instantiation, default is defined by FreeIPA
+	// +optional
+	UIDStart int `json:"uidStart,omitempty"`
+	// The instantiation parameters for the master node
+	// +optional
+	Master Server `json:"master,omitempty"`
+	// The instantiation parameters for replica nodes
+	// +optional
+	Replica Server `json:"replica,omitempty"`
+	// The number of // Whether to create a DNS server on this node, defaults to `false`replicas that are desired, defaults to 1
+	// +optional
+	ReplicaCount int `json:"replicaCount,omitempty"`
+}
+
+type Server struct {
+	// The name of the secret for a node type, defaults to "ipa-server-secrets"
+	SecretName string `json:"secretName,omitempty"`
+	// Whether to create a DNS server / replica on this node, defaults to `false`
+	DnsEnable bool `json:"dnsEnable,omitempty"`
+	// Whether to create a CA server / replica on this node, defaults to `false`
+	CaEnable bool `json:"caEnable,omitempty"`
+	// Whether to create a NTP server / replica on this node, defaults to `false`
+	NtpEnable bool `json:"ntpEnable,omitempty"`
 }
 
 // IpaClusterStatus defines the observed state of IpaCluster
 type IpaClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Human-readable status of the controller
+	Status string `json:"status"`
+	// Quantity of persistent volumes that are currently generated
+	PvQuantity int `json:"pvQuantity"`
 }
 
 // +genclient

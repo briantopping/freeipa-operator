@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - deployments
+  - statefulset
   verbs:
   - get
   - list
@@ -19,7 +19,7 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - deployments/status
+  - statefulset/status
   verbs:
   - get
   - update

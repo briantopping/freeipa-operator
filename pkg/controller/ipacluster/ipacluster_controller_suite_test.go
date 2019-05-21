@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 	t := &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
 	}
-	apis.AddToScheme(scheme.Scheme)
+	_ = apis.AddToScheme(scheme.Scheme)
 
 	var err error
 	if cfg, err = t.Start(); err != nil {
@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 	}
 
 	code := m.Run()
-	t.Stop()
+	_ = t.Stop()
 	os.Exit(code)
 }
 
