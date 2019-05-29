@@ -37,11 +37,11 @@ go_repository(
 
 go_repository(
     name = "io_k8s_apiextensions_apiserver",
+    build_extra_args = ["-exclude=vendor"],
     build_file_generation = "on",
     build_file_proto_mode = "legacy",
     commit = "0cd23ebeb6882bd1cdc2cb15fc7b2d72e8a86a5b",
     importpath = "k8s.io/apiextensions-apiserver",
-    build_extra_args = ["-exclude=vendor"],
 )
 
 go_repository(
@@ -50,6 +50,13 @@ go_repository(
     build_file_proto_mode = "legacy",
     commit = "eddba98df674a16931d2d4ba75edc3a389bf633a",
     importpath = "k8s.io/apimachinery",
+)
+
+go_repository(
+    name = "io_k8s_kubernetes",
+    commit = "66049e3b21efe110454d67df4fa62b08ea79a19b",
+    importpath = "k8s.io/kubernetes",
+    build_extra_args = ["-exclude=vendor"],
 )
 
 go_repository(
@@ -362,9 +369,9 @@ go_repository(
 
 go_repository(
     name = "io_k8s_sigs_controller_runtime",
+    build_extra_args = ["-exclude=vendor"],
     commit = "f6f0bc9611363b43664d08fb097ab13243ef621d",
     importpath = "sigs.k8s.io/controller-runtime",
-    build_extra_args = ["-exclude=vendor"],
 )
 
 go_repository(

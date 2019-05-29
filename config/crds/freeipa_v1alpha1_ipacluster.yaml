@@ -44,6 +44,9 @@ spec:
                   description: Whether to create a CA server / replica on this node,
                     defaults to `false`
                   type: boolean
+                capacity:
+                  description: Size of the storage allocation
+                  type: object
                 dnsEnable:
                   description: Whether to create a DNS server / replica on this node,
                     defaults to `false`
@@ -56,6 +59,10 @@ spec:
                   description: The name of the secret for a node type, defaults to
                     "ipa-server-secrets"
                   type: string
+                storageClassName:
+                  description: Name of the storage class to use. Will try default
+                    storage class if omitted
+                  type: string
               type: object
             realmName:
               description: The Kerberos realm name as in "EXAMPLE.COM", required
@@ -67,6 +74,9 @@ spec:
                   description: Whether to create a CA server / replica on this node,
                     defaults to `false`
                   type: boolean
+                capacity:
+                  description: Size of the storage allocation
+                  type: object
                 dnsEnable:
                   description: Whether to create a DNS server / replica on this node,
                     defaults to `false`
@@ -78,6 +88,10 @@ spec:
                 secretName:
                   description: The name of the secret for a node type, defaults to
                     "ipa-server-secrets"
+                  type: string
+                storageClassName:
+                  description: Name of the storage class to use. Will try default
+                    storage class if omitted
                   type: string
               type: object
             replicaCount:

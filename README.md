@@ -1,4 +1,5 @@
 # FreeIPA Operator
+[![GitHub license][license-badge]](LICENSE)
 
 An integrated Identity and Authentication solution for Linux/UNIX networked environments. IPA stands for "Identity, Policy, Audit".
 Comparatively, it provides a solution similar to Microsoft Active Directory for *NIX environments.
@@ -23,3 +24,28 @@ Prometheus.
 ## Status
 
 This project is in development phase. We'll keep this page updated as we get usable features.
+
+## Code of conduct
+
+This project is for everyone. We ask that our users and contributors take a few
+minutes to review our [code of conduct][coc].
+
+
+## License
+
+FreeIPA Operator is copyright 2018 The FreeIPA Operator Authors. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+these files except in compliance with the License. You may obtain a copy of the
+License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+<!-- refs -->
+[coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
+[license-badge]: https://img.shields.io/github/license/linkerd/linkerd.svg

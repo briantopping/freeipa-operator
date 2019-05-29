@@ -1,31 +1,37 @@
-/*
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright 2019 The FreeIPA Operator Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package ipacluster
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"errors"
+	"io"
 	"reflect"
+	"text/template"
 
 	freeipav1alpha1 "github.com/briantopping/freeipa-operator/pkg/apis/freeipa/v1alpha1"
+	"github.com/ghodss/yaml"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -96,7 +102,7 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 	instance := &freeipav1alpha1.IpaCluster{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serr.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
@@ -106,51 +112,118 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// Define the desired StatefulSets object
-	ss := &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-statefulset",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.StatefulSetSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"statefulset": instance.Name + "-statefulset"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"statefulset": instance.Name + "-statefulset"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, ss, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if the StatefulSet already exists
-	found := &appsv1.StatefulSet{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: ss.Name, Namespace: ss.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating StatefulSet", "namespace", ss.Namespace, "name", ss.Name)
-		err = r.Create(context.TODO(), ss)
-		return reconcile.Result{}, err
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(ss.Spec, found.Spec) {
-		found.Spec = ss.Spec
-		log.Info("Updating StatefulSet", "namespace", ss.Namespace, "name", ss.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
+	//terminationGrace := int64(300)
+	//item := &appsv1.StatefulSet{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      instance.Name + "-statefulset",
+	//		Namespace: instance.Namespace,
+	//	},
+	//	Spec: appsv1.StatefulSetSpec{
+	//		Selector: &metav1.LabelSelector{
+	//			MatchLabels: map[string]string{"statefulset": instance.Name + "-statefulset"},
+	//		},
+	//		ServiceName: "test",
+	//		Template: corev1.PodTemplateSpec{
+	//			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"statefulset": instance.Name + "-statefulset"}},
+	//			Spec: corev1.PodSpec{
+	//				PriorityClassName: "high-priority",
+	//				TerminationGracePeriodSeconds: &terminationGrace,
+	//				Containers: []corev1.Container{
+	//					{
+	//						Name:  "freeipa-server",
+	//						Image: "freeipa/freeipa-server:centos-7",
+	//						ImagePullPolicy: corev1.PullIfNotPresent,
+	//						Args: "ipa-replica-install",
+	//
+	//					},
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
+	list, err := ProcessTemplate(instance) // returns ([]metaV1.Object, error)
+	for _, item := range list {
+		if !reflect.ValueOf(item).MethodByName("DeepCopyObject").IsValid() {
+			return reconcile.Result{}, errors.New("no DeepCopyObject method on object")
+		}
+		if err := controllerutil.SetControllerReference(instance, item, r.scheme); err != nil {
 			return reconcile.Result{}, err
+		}
+		itemObject := reflect.ValueOf(item).MethodByName("DeepCopyObject").Call(nil)[0].Interface().(runtime.Object)
+		kind := itemObject.GetObjectKind().GroupVersionKind().Kind
+
+		// Check if the StatefulSet already exists
+		found := reflect.New(reflect.TypeOf(itemObject).Elem()).Interface().(runtime.Object)
+		err = r.Get(context.TODO(), types.NamespacedName{Name: item.GetName(), Namespace: item.GetNamespace()}, found)
+		if err != nil && k8serr.IsNotFound(err) {
+			log.Info("Creating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
+			err = r.Create(context.TODO(), itemObject)
+			return reconcile.Result{}, err
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Update the found object and write the result back if there are any changes
+		itemSpec := reflect.ValueOf(item).Elem().FieldByName("Spec")
+		foundSpec := reflect.ValueOf(found).Elem().FieldByName("Spec")
+		if !reflect.DeepEqual(itemSpec.Interface(), foundSpec.Interface()) {
+			log.Info("Updating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
+			foundSpec.Set(itemSpec)
+			err = r.Update(context.TODO(), found)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+func ProcessTemplate(cluster *freeipav1alpha1.IpaCluster) ([]metaV1.Object, error) {
+	t, err := template.New("template").Parse(Template)
+	if err != nil {
+		return nil, err
+	}
+	buf := &bytes.Buffer{}
+	err = t.Execute(buf, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
+	result := []metaV1.Object(nil)
+	for {
+		// Read a single YAML object
+		b, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal the object enough to read the Kind field
+		var meta metaV1.TypeMeta
+		if err := yaml.Unmarshal(b, &meta); err != nil {
+			return nil, err
+		}
+
+		switch meta.Kind {
+		case "StatefulSet":
+			var ss appsv1.StatefulSet
+			err = yaml.Unmarshal(b, &ss)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, &ss)
+
+		case "Service":
+			var service corev1.Service
+			err = yaml.Unmarshal(b, &service)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, &service)
+		}
+	}
+	return result, nil
 }
