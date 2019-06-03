@@ -22,6 +22,7 @@ import (
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +36,7 @@ var c client.Client
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var ssKey = types.NamespacedName{Name: "foo-statefulset", Namespace: "default"}
 
-const timeout = time.Second * 5
+const timeout = time.Second * 5000
 
 func TestReconcile(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
@@ -44,6 +45,7 @@ func TestReconcile(t *testing.T) {
 		Spec: freeipav1alpha1.IpaClusterSpec{
 			RealmName:  "EXAMPLE.COM",
 			DomainName: "example.com",
+            ReplicaCount: 1,
 		}}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
@@ -78,6 +80,10 @@ func TestReconcile(t *testing.T) {
 	g.Eventually(func() error { return c.Get(context.TODO(), ssKey, ss) }, timeout).
 		Should(gomega.Succeed())
 
+	service := &corev1.Service{}
+	g.Eventually(func() error { return c.Get(context.TODO(), types.NamespacedName{Name: "foo-service", Namespace: "default"}, service) }, timeout).
+		Should(gomega.Succeed())
+
 	// Delete the StatefulSet and expect Reconcile to be called for StatefulSet deletion
 	g.Expect(c.Delete(context.TODO(), ss)).NotTo(gomega.HaveOccurred())
 	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
@@ -88,4 +94,17 @@ func TestReconcile(t *testing.T) {
 	g.Eventually(func() error { return c.Delete(context.TODO(), ss) }, timeout).
 		Should(gomega.MatchError("statefulsets.apps \"foo-statefulset\" not found"))
 
+	// Manually delete services since GC isn't enabled in the test control plane
+    deleteService(g, "foo-service")
+    deleteService(g, "foo-service-0a")
+    deleteService(g, "foo-service-0b")
+}
+
+func deleteService(g *gomega.GomegaWithT, name string) bool {
+    service := &corev1.Service{}
+    key := types.NamespacedName{Name: name, Namespace: "default"}
+    g.Eventually(func() error { return c.Get(context.TODO(), key, service) }, timeout).
+        Should(gomega.Succeed())
+    return g.Eventually(func() error { return c.Delete(context.TODO(), service) }, timeout).
+        Should(gomega.MatchError("Service \"" + name + "\" not found"))
 }

@@ -19,9 +19,6 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // IpaClusterSpec defines the desired state of IpaCluster
 type IpaClusterSpec struct {
 	// The Kerberos realm name as in "EXAMPLE.COM", required

@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"text/template"
 
+	rice "github.com/GeertJohan/go.rice"
 	freeipav1alpha1 "github.com/briantopping/freeipa-operator/pkg/apis/freeipa/v1alpha1"
 	"github.com/ghodss/yaml"
 	appsv1 "k8s.io/api/apps/v1"
@@ -111,37 +112,7 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	// Define the desired StatefulSets object
-	//terminationGrace := int64(300)
-	//item := &appsv1.StatefulSet{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      instance.Name + "-statefulset",
-	//		Namespace: instance.Namespace,
-	//	},
-	//	Spec: appsv1.StatefulSetSpec{
-	//		Selector: &metav1.LabelSelector{
-	//			MatchLabels: map[string]string{"statefulset": instance.Name + "-statefulset"},
-	//		},
-	//		ServiceName: "test",
-	//		Template: corev1.PodTemplateSpec{
-	//			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"statefulset": instance.Name + "-statefulset"}},
-	//			Spec: corev1.PodSpec{
-	//				PriorityClassName: "high-priority",
-	//				TerminationGracePeriodSeconds: &terminationGrace,
-	//				Containers: []corev1.Container{
-	//					{
-	//						Name:  "freeipa-server",
-	//						Image: "freeipa/freeipa-server:centos-7",
-	//						ImagePullPolicy: corev1.PullIfNotPresent,
-	//						Args: "ipa-replica-install",
-	//
-	//					},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	list, err := ProcessTemplate(instance) // returns ([]metaV1.Object, error)
+	list, err := ProcessTemplate(instance)
 	for _, item := range list {
 		if !reflect.ValueOf(item).MethodByName("DeepCopyObject").IsValid() {
 			return reconcile.Result{}, errors.New("no DeepCopyObject method on object")
@@ -151,14 +122,19 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		itemObject := reflect.ValueOf(item).MethodByName("DeepCopyObject").Call(nil)[0].Interface().(runtime.Object)
 		kind := itemObject.GetObjectKind().GroupVersionKind().Kind
+		key := types.NamespacedName{Name: item.GetName(), Namespace: item.GetNamespace()}
 
-		// Check if the StatefulSet already exists
+		// Check if the object already exists
 		found := reflect.New(reflect.TypeOf(itemObject).Elem()).Interface().(runtime.Object)
-		err = r.Get(context.TODO(), types.NamespacedName{Name: item.GetName(), Namespace: item.GetNamespace()}, found)
+		err = r.Get(context.TODO(), key, found)
 		if err != nil && k8serr.IsNotFound(err) {
 			log.Info("Creating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
 			err = r.Create(context.TODO(), itemObject)
-			return reconcile.Result{}, err
+			if err != nil {
+				return reconcile.Result{}, err
+			} else {
+				continue
+			}
 		} else if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -178,8 +154,18 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, nil
 }
 
+// Creates a list of objects from a YAML template. These objects are introspected and applied by the caller
 func ProcessTemplate(cluster *freeipav1alpha1.IpaCluster) ([]metaV1.Object, error) {
-	t, err := template.New("template").Parse(Template)
+	templateBox, err := rice.FindBox(".")
+	if err != nil {
+		log.Error(err, "Could not open templates box")
+	}
+	// get file contents as string
+	templateString, err := templateBox.String("service.tmpl")
+	if err != nil {
+		log.Error(err, "Could not open template")
+	}
+	t, err := template.New("template").Funcs(funcMaps).Parse(templateString)
 	if err != nil {
 		return nil, err
 	}
@@ -226,4 +212,10 @@ func ProcessTemplate(cluster *freeipav1alpha1.IpaCluster) ([]metaV1.Object, erro
 		}
 	}
 	return result, nil
+}
+
+var funcMaps = template.FuncMap{
+	"seq": func(c int) []interface{} {
+		return make([]interface{}, c)
+	},
 }

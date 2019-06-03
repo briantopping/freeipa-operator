@@ -54,9 +54,9 @@ go_repository(
 
 go_repository(
     name = "io_k8s_kubernetes",
+    build_extra_args = ["-exclude=vendor"],
     commit = "66049e3b21efe110454d67df4fa62b08ea79a19b",
     importpath = "k8s.io/kubernetes",
-    build_extra_args = ["-exclude=vendor"],
 )
 
 go_repository(
