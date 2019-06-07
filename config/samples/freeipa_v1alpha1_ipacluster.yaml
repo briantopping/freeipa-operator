@@ -7,3 +7,8 @@ metadata:
 spec:
   realmName: EXAMPLE.COM
   domainName: example.com
+  servers:
+    - serverName: server1.example.com
+      address: 192.168.0.10
+    - serverName: server2.example.com
+      address: 192.168.0.11

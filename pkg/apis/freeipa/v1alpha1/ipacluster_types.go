@@ -31,18 +31,13 @@ type IpaClusterSpec struct {
 	// An integer for the start of the UID numbering range, immutable after cluster instantiation, default is defined by FreeIPA
 	// +optional
 	UIDStart int `json:"uidStart,omitempty"`
-	// The instantiation parameters for the master node
-	// +optional
-	Master Server `json:"master,omitempty"`
-	// The instantiation parameters for replica nodes
-	// +optional
-	Replica Server `json:"replica,omitempty"`
-	// The number of // Whether to create a DNS server on this node, defaults to `false`replicas that are desired, defaults to 1
-	// +optional
-	ReplicaCount int `json:"replicaCount,omitempty"`
+	// The instantiation parameters for the nodes
+	Servers []Server `json:"servers"`
 }
 
 type Server struct {
+	// The FQDN of the server
+	ServerName string `json:"serverName"`
 	// The name of the secret for a node type, defaults to "ipa-server-secrets"
 	SecretName string `json:"secretName,omitempty"`
 	// Whether to create a DNS server / replica on this node, defaults to `false`
@@ -55,6 +50,10 @@ type Server struct {
 	StorageClassName string `json:"storageClassName,omitempty"`
 	// Size of the storage allocation
 	Capacity core.ResourceList `json:"capacity,omitempty"`
+	// The LB address of a node
+	LbAddress string `json:"address,omitempty"`
+	// The externalTrafficPolicy of the LoadBalancer Service
+	ExternalTrafficPolicy string `json:"externalTrafficPolicy,omitempty"`
 }
 
 // IpaClusterStatus defines the observed state of IpaCluster

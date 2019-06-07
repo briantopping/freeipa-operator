@@ -92,8 +92,13 @@ func (in *IpaClusterSpec) DeepCopyInto(out *IpaClusterSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	in.Master.DeepCopyInto(&out.Master)
-	in.Replica.DeepCopyInto(&out.Replica)
+	if in.Servers != nil {
+		in, out := &in.Servers, &out.Servers
+		*out = make([]Server, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

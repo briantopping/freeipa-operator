@@ -1,29 +1,30 @@
+{{- /*gotype: github.com/briantopping/freeipa-operator/pkg/apis/freeipa/v1alpha1.IpaCluster*/ -}}
 kind: StatefulSet
 metadata:
-  name: {{- /*gotype: IpaC*/ -}}{{ .ObjectMeta.Name }}-statefulset
+  name: {{ .ObjectMeta.Name }}-statefulset
   namespace: {{ .ObjectMeta.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: freeipa-server
-  serviceName: ns
-  replicas: {{ .Spec.ReplicaCount }}
+      app: freeipa-{{ .ObjectMeta.Name }}
+  serviceName: {{ .ObjectMeta.Name }}
+  replicas: {{ len .Spec.Servers }}
   template:
     metadata:
       labels:
-        app: freeipa-server
+        app: freeipa-{{ .ObjectMeta.Name }}
       annotations:
         seccomp.security.alpha.kubernetes.io/pod: docker/default
     spec:
       priorityClassName: high-priority
       terminationGracePeriodSeconds: 300
       containers:
-      - name: freeipa-server
+      - name: freeipa-{{ .ObjectMeta.Name }}
         imagePullPolicy: IfNotPresent
         image: freeipa/freeipa-server:centos-7
         args: ["ipa-replica-install"]
         volumeMounts:
-        - name: rbd-data
+        - name: data
           mountPath: /data
         - mountPath: /sys/fs/cgroup
           name: cgroups
@@ -81,11 +82,11 @@ spec:
           medium: Memory
   volumeClaimTemplates:
   - metadata:
-      name: rbd-data
+      name: data
     spec:
       accessModes:
       - ReadWriteOnce
-      storageClassName: cephrbd-dmz
+      storageClassName: FIXME
       resources:
         requests:
           storage: 10Gi
@@ -97,12 +98,13 @@ metadata:
   namespace: {{ .ObjectMeta.Namespace }}
 spec:
   selector:
-    app: freeipa-server
+    app: freeipa-{{ .ObjectMeta.Name }}
   type: ClusterIP
   clusterIP:  None
 ---
 {{ $root := . }}
-{{ range $i, $sequence := (seq .Spec.ReplicaCount) }}
+{{ range $i, $sequence := .Spec.Servers }}
+{{- /*gotype: github.com/briantopping/freeipa-operator/pkg/apis/freeipa/v1alpha1.Server*/ -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -115,8 +117,8 @@ spec:
     app: freeipa-server
     statefulset.kubernetes.io/pod-name: {{ $root.ObjectMeta.Name }}-{{ $i }}
   type: LoadBalancer
-  externalTrafficPolicy: Local
-  loadBalancerIP: 204.152.96.10
+  externalTrafficPolicy: {{.ExternalTrafficPolicy }}
+  loadBalancerIP: {{ .LbAddress }}
   ports:
   - name: dns-udp
     port: 53
@@ -132,11 +134,11 @@ metadata:
     metallb.universe.tf/allow-shared-ip: {{ $root.ObjectMeta.Name }}-{{ $i }}
 spec:
   selector:
-    app: freeipa-server
+    app: freeipa-{{ $root.ObjectMeta.Name }}
     statefulset.kubernetes.io/pod-name: {{ $root.ObjectMeta.Name }}-{{ $i }}
   type: LoadBalancer
-  externalTrafficPolicy: Local
-  loadBalancerIP: 204.152.96.10
+  externalTrafficPolicy: {{.ExternalTrafficPolicy }}
+  loadBalancerIP: {{ .LbAddress }}
   ports:
   - name: dns-tcp
     port: 53

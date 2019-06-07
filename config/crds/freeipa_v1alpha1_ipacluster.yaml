@@ -37,68 +37,49 @@ spec:
             domainName:
               description: The directory service root name as in "example.com", required
               type: string
-            master:
-              description: The instantiation parameters for the master node
-              properties:
-                caEnable:
-                  description: Whether to create a CA server / replica on this node,
-                    defaults to `false`
-                  type: boolean
-                capacity:
-                  description: Size of the storage allocation
-                  type: object
-                dnsEnable:
-                  description: Whether to create a DNS server / replica on this node,
-                    defaults to `false`
-                  type: boolean
-                ntpEnable:
-                  description: Whether to create a NTP server / replica on this node,
-                    defaults to `false`
-                  type: boolean
-                secretName:
-                  description: The name of the secret for a node type, defaults to
-                    "ipa-server-secrets"
-                  type: string
-                storageClassName:
-                  description: Name of the storage class to use. Will try default
-                    storage class if omitted
-                  type: string
-              type: object
             realmName:
               description: The Kerberos realm name as in "EXAMPLE.COM", required
               type: string
-            replica:
-              description: The instantiation parameters for replica nodes
-              properties:
-                caEnable:
-                  description: Whether to create a CA server / replica on this node,
-                    defaults to `false`
-                  type: boolean
-                capacity:
-                  description: Size of the storage allocation
-                  type: object
-                dnsEnable:
-                  description: Whether to create a DNS server / replica on this node,
-                    defaults to `false`
-                  type: boolean
-                ntpEnable:
-                  description: Whether to create a NTP server / replica on this node,
-                    defaults to `false`
-                  type: boolean
-                secretName:
-                  description: The name of the secret for a node type, defaults to
-                    "ipa-server-secrets"
-                  type: string
-                storageClassName:
-                  description: Name of the storage class to use. Will try default
-                    storage class if omitted
-                  type: string
-              type: object
-            replicaCount:
-              description: The number of // Whether to create a DNS server on this
-                node, defaults to `false`replicas that are desired, defaults to 1
-              format: int64
-              type: integer
+            servers:
+              description: The instantiation parameters for the nodes
+              items:
+                properties:
+                  address:
+                    description: The LB address of a node
+                    type: string
+                  caEnable:
+                    description: Whether to create a CA server / replica on this node,
+                      defaults to `false`
+                    type: boolean
+                  capacity:
+                    description: Size of the storage allocation
+                    type: object
+                  dnsEnable:
+                    description: Whether to create a DNS server / replica on this
+                      node, defaults to `false`
+                    type: boolean
+                  externalTrafficPolicy:
+                    description: The externalTrafficPolicy of the LoadBalancer Service
+                    type: string
+                  ntpEnable:
+                    description: Whether to create a NTP server / replica on this
+                      node, defaults to `false`
+                    type: boolean
+                  secretName:
+                    description: The name of the secret for a node type, defaults
+                      to "ipa-server-secrets"
+                    type: string
+                  serverName:
+                    description: The FQDN of the server
+                    type: string
+                  storageClassName:
+                    description: Name of the storage class to use. Will try default
+                      storage class if omitted
+                    type: string
+                required:
+                - serverName
+                type: object
+              type: array
             uidStart:
               description: An integer for the start of the UID numbering range, immutable
                 after cluster instantiation, default is defined by FreeIPA
@@ -107,6 +88,7 @@ spec:
           required:
           - realmName
           - domainName
+          - servers
           type: object
         status:
           properties:

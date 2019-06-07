@@ -36,6 +36,10 @@ func TestStorageIpaCluster(t *testing.T) {
 		Spec: IpaClusterSpec{
 			RealmName:  "EXAMPLE.COM",
 			DomainName: "example.com",
+			Servers: []Server{{
+				ServerName: "server01.example.com",
+				LbAddress:  "192.168.10.1",
+			}},
 		}}
 	g := gomega.NewGomegaWithT(t)
 

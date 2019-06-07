@@ -36,7 +36,7 @@ var c client.Client
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var ssKey = types.NamespacedName{Name: "foo-statefulset", Namespace: "default"}
 
-const timeout = time.Second * 5000
+const timeout = time.Second * 5
 
 func TestReconcile(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
@@ -45,7 +45,10 @@ func TestReconcile(t *testing.T) {
 		Spec: freeipav1alpha1.IpaClusterSpec{
 			RealmName:  "EXAMPLE.COM",
 			DomainName: "example.com",
-            ReplicaCount: 1,
+			Servers: []freeipav1alpha1.Server{{
+				ServerName: "server01.example.com",
+				LbAddress:  "192.168.10.1",
+			}},
 		}}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
@@ -106,5 +109,5 @@ func deleteService(g *gomega.GomegaWithT, name string) bool {
     g.Eventually(func() error { return c.Get(context.TODO(), key, service) }, timeout).
         Should(gomega.Succeed())
     return g.Eventually(func() error { return c.Delete(context.TODO(), service) }, timeout).
-        Should(gomega.MatchError("Service \"" + name + "\" not found"))
+        Should(gomega.MatchError("services \"" + name + "\" not found"))
 }

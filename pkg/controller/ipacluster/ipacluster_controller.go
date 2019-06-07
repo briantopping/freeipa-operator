@@ -144,7 +144,7 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 		foundSpec := reflect.ValueOf(found).Elem().FieldByName("Spec")
 		if !reflect.DeepEqual(itemSpec.Interface(), foundSpec.Interface()) {
 			log.Info("Updating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
-			foundSpec.Set(itemSpec)
+			updateObject(foundSpec, itemSpec)
 			err = r.Update(context.TODO(), found)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -152,6 +152,19 @@ func (r *ReconcileIpaCluster) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+// Update object fields in a manner that respects immutables
+func updateObject(dest reflect.Value, source reflect.Value) {
+	name := dest.Type().Name()
+	switch name {
+	case "ServiceSpec":
+		clusterIP := dest.FieldByName("ClusterIP").Interface().(string)
+		dest.Set(source)
+		dest.FieldByName("ClusterIP").SetString(clusterIP)
+	default:
+		dest.Set(source)
+	}
 }
 
 // Creates a list of objects from a YAML template. These objects are introspected and applied by the caller
