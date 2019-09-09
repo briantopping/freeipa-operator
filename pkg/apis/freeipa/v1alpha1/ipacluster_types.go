@@ -16,7 +16,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // IpaClusterSpec defines the desired state of IpaCluster
@@ -49,7 +48,7 @@ type Server struct {
 	// Name of the storage class to use. Will try default storage class if omitted
 	StorageClassName string `json:"storageClassName,omitempty"`
 	// Size of the storage allocation
-	Capacity core.ResourceList `json:"capacity,omitempty"`
+	Capacity string `json:"capacity,omitempty"`
 	// The LB address of a node
 	LbAddress string `json:"address,omitempty"`
 	// The externalTrafficPolicy of the LoadBalancer Service

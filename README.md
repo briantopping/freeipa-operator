@@ -13,16 +13,13 @@ of spending weeks getting it settled and reliable in a continerized environment.
 
 ## Tooling and Dependencies
 
-The operator is based on Kubebuilder and Bazel. The container itself comes from the FreeIPA Container project. 
+The operator is based on Kubebuilder. The container itself comes from the FreeIPA Container project. 
 
 Dependencies for the project are provided by `dep`. `dep ensure` will bring in the vendor directory based on the `Gopkg.toml`
-file at the root of the project. At some point, this should not be necessary for non-developer builds as Bazel will be 
-configured in `WORKSPACE` to pull the dependencies. Changes to the dependencies will use a combination of `dep ensure`
-and Gazelle to update the Bazel builds.
+file at the root of the project. 
 
 ## Building
 
-Until the Bazel build is finished, use the `Makefile` for tasks like generating files in `config` and `pkg/apis`:
 * `make generate` - Will create the CRDs and deepcopy routines. This is good if you want to run from your IDE debugger.
 * `make install` - Install the generated CRD to the current cluster context.
 * `make run` - This will run the controller against the cluster currently configured in your `~/.kube/config`. In this case,

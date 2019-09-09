@@ -53,7 +53,7 @@ spec:
                     type: boolean
                   capacity:
                     description: Size of the storage allocation
-                    type: object
+                    type: string
                   dnsEnable:
                     description: Whether to create a DNS server / replica on this
                       node, defaults to `false`
