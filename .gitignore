@@ -2,8 +2,6 @@
 /vendor
 build/_output
 build/_test
-/bazel-*
-/Gopkg.lock
 ### Go ###
 # Binaries for programs and plugins
 *.exe
