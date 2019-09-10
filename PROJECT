@@ -1,3 +1,7 @@
-version: "1"
+version: "2"
 domain: coglative.com
 repo: github.com/briantopping/freeipa-operator
+resources:
+- group: freeipa
+  version: v1alpha1
+  kind: IpaCluster
