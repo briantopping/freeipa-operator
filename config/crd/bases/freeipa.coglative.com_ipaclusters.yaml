@@ -1,0 +1,118 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: ipaclusters.freeipa.coglative.com
+spec:
+  group: freeipa.coglative.com
+  names:
+    kind: IpaCluster
+    plural: ipaclusters
+  scope: ""
+  validation:
+    openAPIV3Schema:
+      description: IpaCluster is the Schema for the ipaclusters API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: IpaClusterSpec defines the desired state of IpaCluster
+          properties:
+            dnsForwarders:
+              description: A string list of DNS forwarders for name resolution, defaults
+                to no forwarders
+              items:
+                type: string
+              type: array
+            domainName:
+              description: The directory service root name as in "example.com", required
+              type: string
+            realmName:
+              description: The Kerberos realm name as in "EXAMPLE.COM", required
+              type: string
+            servers:
+              description: The instantiation parameters for the nodes
+              items:
+                properties:
+                  address:
+                    description: The LB address of a node
+                    type: string
+                  caEnable:
+                    description: Whether to create a CA server / replica on this node,
+                      defaults to `false`
+                    type: boolean
+                  capacity:
+                    description: Size of the storage allocation
+                    type: string
+                  dnsEnable:
+                    description: Whether to create a DNS server / replica on this
+                      node, defaults to `false`
+                    type: boolean
+                  externalTrafficPolicy:
+                    description: The externalTrafficPolicy of the LoadBalancer Service
+                    type: string
+                  ntpEnable:
+                    description: Whether to create a NTP server / replica on this
+                      node, defaults to `false`
+                    type: boolean
+                  secretName:
+                    description: The name of the secret for a node type, defaults
+                      to "ipa-server-secrets"
+                    type: string
+                  serverName:
+                    description: The FQDN of the server
+                    type: string
+                  storageClassName:
+                    description: Name of the storage class to use. Will try default
+                      storage class if omitted
+                    type: string
+                required:
+                - serverName
+                type: object
+              type: array
+            uidStart:
+              description: An integer for the start of the UID numbering range, immutable
+                after cluster instantiation, default is defined by FreeIPA
+              type: integer
+          required:
+          - domainName
+          - realmName
+          - servers
+          type: object
+        status:
+          description: IpaClusterStatus defines the observed state of IpaCluster
+          properties:
+            pvQuantity:
+              description: Quantity of persistent volumes that are currently generated
+              type: integer
+            status:
+              description: Human-readable status of the controller
+              type: string
+          required:
+          - pvQuantity
+          - status
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

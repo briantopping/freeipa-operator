@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"k8s.io/client-go/tools/record"
 	"reflect"
 	"text/template"
 
@@ -38,18 +39,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	freeipav1alpha1 "github.com/briantopping/freeipa-operator/api/v1alpha1"
 )
 
-var log = logf.Log.WithName("ipacluster.controller")
-
 // IpaClusterReconciler reconciles a IpaCluster object
 type IpaClusterReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=apps,resources=statefulset,verbs=get;list;watch;create;update;patch;delete
@@ -62,7 +61,7 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	_ = r.Log.WithValues("ipacluster", req.NamespacedName)
 
 	// Fetch the IpaCluster instance
-	log.Info("Starting reconcile", "Name", req.Name, "Namespace", req.Namespace, "Kind", "ipaclusters.freeipa.coglative.com")
+	r.Log.Info("Starting reconcile", "Name", req.Name, "Namespace", req.Namespace, "Kind", "ipaclusters.freeipa.coglative.com")
 	instance := &freeipav1alpha1.IpaCluster{}
 	err := r.Get(context.TODO(), req.NamespacedName, instance)
 	if err != nil {
@@ -75,11 +74,11 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	list, err := ProcessTemplate(instance)
+	list, err := r.processTemplate(instance)
 	if err != nil {
-	    r.Log.Error(err, "Could not parse template")
-        return reconcile.Result{}, err
-    }
+		r.Log.Error(err, "Could not parse template")
+		return reconcile.Result{}, err
+	}
 	for _, item := range list {
 		if !reflect.ValueOf(item).MethodByName("DeepCopyObject").IsValid() {
 			return reconcile.Result{}, errors.New("no DeepCopyObject method on object")
@@ -95,7 +94,7 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		found := reflect.New(reflect.TypeOf(itemObject).Elem()).Interface().(runtime.Object)
 		err = r.Get(context.TODO(), key, found)
 		if err != nil && k8serr.IsNotFound(err) {
-			log.Info("Creating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
+			r.Log.Info("Creating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
 			err = r.Create(context.TODO(), itemObject)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -110,7 +109,7 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		itemSpec := reflect.ValueOf(item).Elem().FieldByName("Spec")
 		foundSpec := reflect.ValueOf(found).Elem().FieldByName("Spec")
 		if !reflect.DeepEqual(itemSpec.Interface(), foundSpec.Interface()) {
-			log.Info("Updating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
+			r.Log.Info("Updating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
 			updateObject(foundSpec, itemSpec)
 			err = r.Update(context.TODO(), found)
 			if err != nil {
@@ -136,15 +135,15 @@ func updateObject(dest reflect.Value, source reflect.Value) {
 }
 
 // Creates a list of objects from a YAML template. These objects are introspected and applied by the caller
-func ProcessTemplate(cluster *freeipav1alpha1.IpaCluster) ([]metaV1.Object, error) {
+func (r *IpaClusterReconciler) processTemplate(cluster *freeipav1alpha1.IpaCluster) ([]metaV1.Object, error) {
 	templateBox, err := rice.FindBox(".")
 	if err != nil {
-		log.Error(err, "Could not open templates box")
+		r.Log.Error(err, "Could not open templates box")
 	}
 	// get file contents as string
 	templateString, err := templateBox.String("service.tmpl")
 	if err != nil {
-		log.Error(err, "Could not open template")
+		r.Log.Error(err, "Could not open template")
 	}
 	t, err := template.New("template").Funcs(funcMaps).Parse(templateString)
 	if err != nil {

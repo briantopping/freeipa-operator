@@ -18,32 +18,34 @@ import (
 const timeout = time.Second * 30
 const interval = time.Second * 1
 
-var ssKey = types.NamespacedName{Name: "foo-statefulset", Namespace: "default"}
-
 var _ = Describe("IpaCluster Controller", func() {
 	It("can reconcile", func() {
 		// Create the IpaCluster object and expect the Reconcile and StatefulSet to be created
-		By("Expecting to create CRD")
-		Eventually(func() error {
-			instance := &freeipav1alpha1.IpaCluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
-				Spec: freeipav1alpha1.IpaClusterSpec{
-					RealmName:  "EXAMPLE.COM",
-					DomainName: "example.com",
-					Servers: []freeipav1alpha1.Server{{
-						ServerName: "server01.example.com",
-						LbAddress:  "192.168.10.1",
-					}},
-				}}
-			return k8sClient.Create(context.Background(), instance)
-		}, timeout, interval).Should(Succeed())
+		By("Expecting to create custom resource")
+		instance := &freeipav1alpha1.IpaCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+			Spec: freeipav1alpha1.IpaClusterSpec{
+				RealmName:  "EXAMPLE.COM",
+				DomainName: "example.com",
+				Servers: []freeipav1alpha1.Server{{
+					ServerName: "server01.example.com",
+					LbAddress:  "192.168.10.1",
+				}},
+			}}
+		Expect(k8sClient.Create(context.Background(), instance)).Should(Succeed())
 
 		//defer k8sClient.Delete(context.Background(), instance)
+
+		By("Expecting to see custom resource created")
+		Eventually(func() error {
+			ipac := &freeipav1alpha1.IpaCluster{}
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ipac)
+		}, timeout, interval).Should(Succeed())
 
 		By("Expecting to see StatefulSet created")
 		Eventually(func() error {
 			ss := &appsv1.StatefulSet{}
-			return k8sClient.Get(context.Background(), ssKey, ss)
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: "foo-statefulset", Namespace: "default"}, ss)
 		}, timeout, interval).Should(Succeed())
 
 		By("Expecting to see Service created")
@@ -56,23 +58,18 @@ var _ = Describe("IpaCluster Controller", func() {
 		By("Expecting to delete successfully")
 		Eventually(func() error {
 			f := &appsv1.StatefulSet{}
-			_ = k8sClient.Get(context.Background(), ssKey, f)
+			_ = k8sClient.Get(context.Background(), types.NamespacedName{Name: "foo-statefulset", Namespace: "default"}, f)
 			return k8sClient.Delete(context.Background(), f)
 		}, timeout, interval).Should(Succeed())
 
+		ss := &appsv1.StatefulSet{}
 		By("Expecting to delete finish")
 		Eventually(func() error {
-			f := &appsv1.StatefulSet{}
-			return k8sClient.Get(context.Background(), ssKey, f)
+			return k8sClient.Get(context.Background(), types.NamespacedName{Name: "foo-statefulset", Namespace: "default"}, ss)
 		}, timeout, interval).ShouldNot(Succeed())
-		Eventually(func() error {
-			ss := &appsv1.StatefulSet{}
-			return k8sClient.Get(context.Background(), ssKey, ss)
-		}, timeout, interval).Should(gomega.Succeed())
 
 		// Manually delete StatefulSet since GC isn't enabled in the test control plane
 		Eventually(func() error {
-			ss := &appsv1.StatefulSet{}
 			return k8sClient.Delete(context.Background(), ss)
 		}, timeout, interval).Should(gomega.MatchError("statefulsets.apps \"foo-statefulset\" not found"))
 
