@@ -13,17 +13,19 @@ of spending weeks getting it settled and reliable in a continerized environment.
 
 ## Tooling and Dependencies
 
-The operator is based on Kubebuilder. The container itself comes from the FreeIPA Container project. 
+The operator is based on Kubebuilder v2. The container itself comes from the FreeIPA Container project. 
 
 Dependencies for the project are provided by `dep`. `dep ensure` will bring in the vendor directory based on the `Gopkg.toml`
 file at the root of the project. 
 
 ## Building
-
+The specifics of using Kubebuilder are at https://book.kubebuilder.io. You can review that for complete documentation
+on build options. Here are a few:
 * `make generate` - Will create the CRDs and deepcopy routines. This is good if you want to run from your IDE debugger.
 * `make install` - Install the generated CRD to the current cluster context.
 * `make run` - This will run the controller against the cluster currently configured in your `~/.kube/config`. In this case,
 debugging is up to you (such as connecting Delve to the running process).
+* `make test` - Uses the Ginkgo test framework to start an in-process Kubernetes control plane and run the controller through available unit tests.
 
 In general, once files are generated, the `cmd/manager/main.go` can be run from your IDE for debugging.
 
@@ -31,7 +33,7 @@ Please take a closer look at the `Makefile` for other options.
 
 ## Contributing
 
-Please feel free to engage with issues and PRs. It's imagined this project will reach basic maturity pretty quickly, but there's
+Please feel free to engage with issues and PRs. It's imagined this project will reach basic maturity pretty quickly (especially now that the author is back from a Summer 2019 sabbatical), but there's
 a lot of benefits that the operator pattern could bring to FreeIPA, such as managing backups, upgrades and monitoring with 
 Prometheus.   
 

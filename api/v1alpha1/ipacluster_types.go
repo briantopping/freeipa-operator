@@ -19,9 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // IpaClusterSpec defines the desired state of IpaCluster
 type IpaClusterSpec struct {
 	// The Kerberos realm name as in "EXAMPLE.COM", required
@@ -74,9 +71,21 @@ type IpaCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   IpaClusterSpec   `json:"spec,omitempty"`
-	Status IpaClusterStatus `json:"status,omitempty"`
+	Spec   *IpaClusterSpec   `json:"spec,omitempty"`
+	Status *IpaClusterStatus `json:"status,omitempty"`
 }
+
+func (run *IpaCluster) IsBeingDeleted() bool {
+    return !run.ObjectMeta.DeletionTimestamp.IsZero()
+}
+
+//func (run *IpaCluster) IsSubmitted() bool {
+//    if run.Status == nil || run.Status.Metadata.JobID == 0 {
+//        return false
+//    }
+//    return run.Status.Metadata.JobID > 0
+//}
+
 
 // +kubebuilder:object:root=true
 

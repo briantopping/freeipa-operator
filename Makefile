@@ -13,6 +13,10 @@ endif
 
 all: manager
 
+deps:
+	go get -u github.com/GeertJohan/go.rice
+	go get -u github.com/GeertJohan/go.rice/rice
+
 # Run tests
 test: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
@@ -49,6 +53,7 @@ vet:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
+	cd controllers && rice embed-go
 
 # Build the docker image
 docker-build: test

@@ -16,31 +16,27 @@ limitations under the License.
 package controllers
 
 import (
-	"bufio"
-	"bytes"
-	"context"
-	"errors"
-	"io"
-	"k8s.io/client-go/tools/record"
-	"reflect"
-	"text/template"
+    "bytes"
+    "context"
+    "errors"
+    "k8s.io/client-go/tools/record"
+    "reflect"
+    "strings"
+    "text/template"
 
-	rice "github.com/GeertJohan/go.rice"
-	"github.com/ghodss/yaml"
-	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	k8serr "k8s.io/apimachinery/pkg/api/errors"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+    rice "github.com/GeertJohan/go.rice"
+    "github.com/go-logr/logr"
+    k8serr "k8s.io/apimachinery/pkg/api/errors"
+    metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/apimachinery/pkg/runtime"
+    "k8s.io/apimachinery/pkg/types"
+    "k8s.io/client-go/kubernetes/scheme"
+    ctrl "sigs.k8s.io/controller-runtime"
+    "sigs.k8s.io/controller-runtime/pkg/client"
+    "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+    "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	freeipav1alpha1 "github.com/briantopping/freeipa-operator/api/v1alpha1"
+    freeipav1alpha1 "github.com/briantopping/freeipa-operator/api/v1alpha1"
 )
 
 // IpaClusterReconciler reconciles a IpaCluster object
@@ -63,18 +59,14 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// Fetch the IpaCluster instance
 	r.Log.Info("Starting reconcile", "Name", req.Name, "Namespace", req.Namespace, "Kind", "ipaclusters.freeipa.coglative.com")
 	instance := &freeipav1alpha1.IpaCluster{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(context.Background(), req.NamespacedName, instance); err != nil {
 		if k8serr.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the req.
 		return reconcile.Result{}, err
 	}
 
-	list, err := r.processTemplate(instance)
+	list, err := r.processTemplate(instance, "service.goyaml")
 	if err != nil {
 		r.Log.Error(err, "Could not parse template")
 		return reconcile.Result{}, err
@@ -83,19 +75,21 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if !reflect.ValueOf(item).MethodByName("DeepCopyObject").IsValid() {
 			return reconcile.Result{}, errors.New("no DeepCopyObject method on object")
 		}
-		if err := controllerutil.SetControllerReference(instance, item, r.Scheme); err != nil {
+        itemObject := item.(metaV1.Object)
+        if err := controllerutil.SetControllerReference(instance, itemObject, r.Scheme); err != nil {
 			return reconcile.Result{}, err
 		}
-		itemObject := reflect.ValueOf(item).MethodByName("DeepCopyObject").Call(nil)[0].Interface().(runtime.Object)
-		kind := itemObject.GetObjectKind().GroupVersionKind().Kind
-		key := types.NamespacedName{Name: item.GetName(), Namespace: item.GetNamespace()}
+		kind := item.GetObjectKind()
+		key := types.NamespacedName{Name: itemObject.GetName(), Namespace: itemObject.GetNamespace()}
 
-		// Check if the object already exists
+		// Check if the object already exists. We need to pass the object to search for,
+		// need to reflect on whatever we have to get it
 		found := reflect.New(reflect.TypeOf(itemObject).Elem()).Interface().(runtime.Object)
-		err = r.Get(context.TODO(), key, found)
+
+		err = r.Get(context.Background(), key, found)
 		if err != nil && k8serr.IsNotFound(err) {
-			r.Log.Info("Creating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
-			err = r.Create(context.TODO(), itemObject)
+			r.Log.Info("Creating object", "type", kind, "namespace", itemObject.GetNamespace(), "name", itemObject.GetName())
+			err = r.Create(context.Background(), item)
 			if err != nil {
 				return reconcile.Result{}, err
 			} else {
@@ -109,9 +103,10 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		itemSpec := reflect.ValueOf(item).Elem().FieldByName("Spec")
 		foundSpec := reflect.ValueOf(found).Elem().FieldByName("Spec")
 		if !reflect.DeepEqual(itemSpec.Interface(), foundSpec.Interface()) {
-			r.Log.Info("Updating object", "type", kind, "namespace", item.GetNamespace(), "name", item.GetName())
-			updateObject(foundSpec, itemSpec)
-			err = r.Update(context.TODO(), found)
+			r.Log.Info("Updating object", "type", kind, "namespace", itemObject.GetNamespace(), "name", itemObject.GetName())
+			//updateObject(foundSpec, itemSpec)
+            foundSpec.Set(itemSpec)
+            err = r.Update(context.Background(), found)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -121,27 +116,14 @@ func (r *IpaClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	return ctrl.Result{}, nil
 }
 
-// Update object fields in a manner that respects immutables
-func updateObject(dest reflect.Value, source reflect.Value) {
-	name := dest.Type().Name()
-	switch name {
-	case "ServiceSpec":
-		clusterIP := dest.FieldByName("ClusterIP").Interface().(string)
-		dest.Set(source)
-		dest.FieldByName("ClusterIP").SetString(clusterIP)
-	default:
-		dest.Set(source)
-	}
-}
-
 // Creates a list of objects from a YAML template. These objects are introspected and applied by the caller
-func (r *IpaClusterReconciler) processTemplate(cluster *freeipav1alpha1.IpaCluster) ([]metaV1.Object, error) {
-	templateBox, err := rice.FindBox(".")
+func (r *IpaClusterReconciler) processTemplate(cluster *freeipav1alpha1.IpaCluster, key string) ([]runtime.Object, error) {
+	templateBox, err := rice.FindBox("template")
 	if err != nil {
 		r.Log.Error(err, "Could not open templates box")
 	}
 	// get file contents as string
-	templateString, err := templateBox.String("service.tmpl")
+	templateString, err := templateBox.String(key)
 	if err != nil {
 		r.Log.Error(err, "Could not open template")
 	}
@@ -149,49 +131,29 @@ func (r *IpaClusterReconciler) processTemplate(cluster *freeipav1alpha1.IpaClust
 	if err != nil {
 		return nil, err
 	}
-	buf := &bytes.Buffer{}
-	err = t.Execute(buf, cluster)
+	templateBuf := &bytes.Buffer{}
+	err = t.Execute(templateBuf, cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(buf, 4096))
-	result := []metaV1.Object(nil)
-	for {
-		// Read a single YAML object
-		b, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
+    files := strings.Split(templateBuf.String(), "---")
+    decode := scheme.Codecs.UniversalDeserializer().Decode
+    var objs []runtime.Object
+    for _, f := range files {
+        if f == "\n" || f == "" {
+            // ignore empty cases
+            continue
+        }
 
-		// Unmarshal the object enough to read the Kind field
-		var meta metaV1.TypeMeta
-		if err := yaml.Unmarshal(b, &meta); err != nil {
-			return nil, err
-		}
+        obj, _, e := decode([]byte(f), nil, nil)
 
-		switch meta.Kind {
-		case "StatefulSet":
-			var ss appsv1.StatefulSet
-			err = yaml.Unmarshal(b, &ss)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, &ss)
-
-		case "Service":
-			var service corev1.Service
-			err = yaml.Unmarshal(b, &service)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, &service)
-		}
-	}
-	return result, nil
+        if e != nil {
+            return nil, e
+        }
+        objs = append(objs, obj)
+    }
+    return objs, nil
 }
 
 var funcMaps = template.FuncMap{
