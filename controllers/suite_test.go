@@ -57,7 +57,7 @@ var _ = BeforeSuite(func(done Done) {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:        []string{filepath.Join("..", "config", "crd", "bases")},
-		AttachControlPlaneOutput: true, // `true` for k8s control plane output in logs
+		AttachControlPlaneOutput: false, // `true` for k8s control plane output in logs
 	}
 
 	var err error

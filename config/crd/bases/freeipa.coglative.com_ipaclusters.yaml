@@ -67,6 +67,10 @@ spec:
                     description: Whether to create a NTP server / replica on this
                       node, defaults to `false`
                     type: boolean
+                  resourceVersion:
+                    description: The ObjectMeta generation of the parent for identifying
+                      items to reconcile
+                    type: string
                   secretName:
                     description: The name of the secret for a node type, defaults
                       to "ipa-server-secrets"
@@ -85,6 +89,7 @@ spec:
             uidStart:
               description: An integer for the start of the UID numbering range, immutable
                 after cluster instantiation, default is defined by FreeIPA
+              format: int32
               type: integer
           required:
           - domainName
@@ -96,6 +101,7 @@ spec:
           properties:
             pvQuantity:
               description: Quantity of persistent volumes that are currently generated
+              format: int32
               type: integer
             status:
               description: Human-readable status of the controller

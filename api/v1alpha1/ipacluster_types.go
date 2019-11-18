@@ -16,8 +16,11 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    //"github.com/briantopping/freeipa-operator/controllers"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const IpaClusterFinalizerName = "ipacluster.finalizers.coglative.com"
 
 // IpaClusterSpec defines the desired state of IpaCluster
 type IpaClusterSpec struct {
@@ -30,7 +33,7 @@ type IpaClusterSpec struct {
 	DNSForwarders []string `json:"dnsForwarders,omitempty"`
 	// An integer for the start of the UID numbering range, immutable after cluster instantiation, default is defined by FreeIPA
 	// +optional
-	UIDStart int `json:"uidStart,omitempty"`
+    UIDStart int32 `json:"uidStart,omitempty"`
 	// The instantiation parameters for the nodes
 	Servers []Server `json:"servers"`
 }
@@ -39,29 +42,34 @@ type Server struct {
 	// The FQDN of the server
 	ServerName string `json:"serverName"`
 	// The name of the secret for a node type, defaults to "ipa-server-secrets"
+    // +optional
 	SecretName string `json:"secretName,omitempty"`
 	// Whether to create a DNS server / replica on this node, defaults to `false`
+    // +optional
 	DnsEnable bool `json:"dnsEnable,omitempty"`
 	// Whether to create a CA server / replica on this node, defaults to `false`
+    // +optional
 	CaEnable bool `json:"caEnable,omitempty"`
 	// Whether to create a NTP server / replica on this node, defaults to `false`
+    // +optional
 	NtpEnable bool `json:"ntpEnable,omitempty"`
 	// Name of the storage class to use. Will try default storage class if omitted
+    // +optional
 	StorageClassName string `json:"storageClassName,omitempty"`
 	// Size of the storage allocation
+    // +optional
 	Capacity string `json:"capacity,omitempty"`
 	// The LB address of a node
+    // +optional
 	LbAddress string `json:"address,omitempty"`
 	// The externalTrafficPolicy of the LoadBalancer Service
+    // +optional
 	ExternalTrafficPolicy string `json:"externalTrafficPolicy,omitempty"`
 }
 
 // IpaClusterStatus defines the observed state of IpaCluster
 type IpaClusterStatus struct {
-	// Human-readable status of the controller
-	Status string `json:"status"`
-	// Quantity of persistent volumes that are currently generated
-	PvQuantity int `json:"pvQuantity"`
+    ServerStatus map[string]ServerStatus `json:"serverStatus"`
 }
 
 // +kubebuilder:object:root=true
@@ -75,17 +83,21 @@ type IpaCluster struct {
 	Status *IpaClusterStatus `json:"status,omitempty"`
 }
 
-func (run *IpaCluster) IsBeingDeleted() bool {
-    return !run.ObjectMeta.DeletionTimestamp.IsZero()
+func (c *IpaCluster) IsBeingDeleted() bool {
+    return !c.ObjectMeta.DeletionTimestamp.IsZero()
 }
 
-//func (run *IpaCluster) IsSubmitted() bool {
-//    if run.Status == nil || run.Status.Metadata.JobID == 0 {
-//        return false
-//    }
-//    return run.Status.Metadata.JobID > 0
-//}
+func (c *IpaCluster) HasFinalizer(finalizerName string) bool {
+    return containsString(c.ObjectMeta.Finalizers, finalizerName)
+}
 
+func (c *IpaCluster) AddFinalizer(finalizerName string) {
+    c.ObjectMeta.Finalizers = append(c.ObjectMeta.Finalizers, finalizerName)
+}
+
+func (c *IpaCluster) RemoveFinalizer(finalizerName string) {
+    c.ObjectMeta.Finalizers = removeString(c.ObjectMeta.Finalizers, finalizerName)
+}
 
 // +kubebuilder:object:root=true
 
@@ -98,4 +110,23 @@ type IpaClusterList struct {
 
 func init() {
 	SchemeBuilder.Register(&IpaCluster{}, &IpaClusterList{})
+}
+
+func containsString(slice []string, s string) bool {
+    for _, item := range slice {
+        if item == s {
+            return true
+        }
+    }
+    return false
+}
+
+func removeString(slice []string, s string) (result []string) {
+    for _, item := range slice {
+        if item == s {
+            continue
+        }
+        result = append(result, item)
+    }
+    return
 }

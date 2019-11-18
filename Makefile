@@ -53,7 +53,7 @@ vet:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
-	cd controllers && rice embed-go
+	cd controllers/template && rice embed-go
 
 # Build the docker image
 docker-build: test
